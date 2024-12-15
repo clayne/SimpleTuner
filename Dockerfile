@@ -11,12 +11,6 @@ RUN apt-get update -y
 # on user input during build
 ENV DEBIAN_FRONTEND noninteractive
 
-# Install libg dependencies
-RUN apt install libgl1-mesa-glx -y
-RUN apt-get install 'ffmpeg'\
-    'libsm6'\
-    'libxext6'  -y
-
 # Install misc unix libraries
 RUN apt-get install -y --no-install-recommends openssh-server \
                                                openssh-client \
@@ -36,21 +30,23 @@ RUN apt-get install -y --no-install-recommends openssh-server \
                                                zip \
                                                unzip \
                                                htop \
-                                               inotify-tools
+                                               inotify-tools \
+						libgl1-mesa-glx \
+						libsm6 \
+						libxext6 \
+						python3 \
+						python3-pip \
+						python3.10-venv
+
+# Python
+RUN python3 -m pip install pip --upgrade
 
 # Set up git to support LFS, and to store credentials; useful for Huggingface Hub
 RUN git config --global credential.helper store && \
     git lfs install
 
-# Install Python VENV
-RUN apt-get install -y python3.10-venv
-
 # Ensure SSH access. Not needed for Runpod but is required on Vast and other Docker hosts
 EXPOSE 22/tcp
-
-# Python
-RUN apt-get update -y && apt-get install -y python3 python3-pip
-RUN python3 -m pip install pip --upgrade
 
 # HF
 ENV HF_HOME=/workspace/huggingface
