@@ -44,9 +44,11 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 # Fix nvtop (may segfault with older versions)
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
-    apt-get install -y --no-install-recommends software-properties-common \
-    && add-apt-repository ppa:flexiondotorg/nvtop \
-    && apt install nvtop
+    apt-get update -y \
+    && apt-get install -y --no-install-recommends software-properties-common \
+    && apt-add-repository ppa:flexiondotorg/nvtop \
+    && apt-get install -y --no-install-recommends nvtop \
+    && apt-get remove -y software-properties-common
 
 # Set up git to support LFS, and to store credentials; useful for Huggingface Hub
 RUN git lfs install && git config --global credential.helper store
