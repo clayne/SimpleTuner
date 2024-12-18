@@ -39,7 +39,7 @@ RUN apt-get install -y --no-install-recommends openssh-server \
 						python3.10-venv
 
 # Python
-RUN python3 -m pip install pip --upgrade
+RUN --mount=type=cache,target=/root/.cache python3 -m pip install pip --upgrade
 
 # Set up git to support LFS, and to store credentials; useful for Huggingface Hub
 RUN git config --global credential.helper store && \
@@ -51,18 +51,18 @@ EXPOSE 22/tcp
 # HF
 ENV HF_HOME=/workspace/huggingface
 
-RUN pip3 install "huggingface_hub[cli]"
+RUN --mount=type=cache,target=/root/.cache pip3 install "huggingface_hub[cli]"
 
 # WanDB
-RUN pip3 install wandb
+RUN --mount=type=cache,target=/root/.cache pip3 install wandb
 
 # Clone SimpleTuner
 #RUN git clone https://github.com/bghira/SimpleTuner --branch release
 RUN git clone https://github.com/bghira/SimpleTuner --branch main # Uncomment to use latest (possibly unstable) version
 
 # Install SimpleTuner
-RUN pip3 install poetry
-RUN cd SimpleTuner && python3 -m venv .venv && poetry install --no-root
+RUN --mount=type=cache,target=/root/.cache pip3 install poetry
+RUN --mount=type=cache,target=/root/.cache cd SimpleTuner && python3 -m venv .venv && poetry install --no-root
 RUN chmod +x SimpleTuner/train.sh
 
 # Copy start script with exec permissions
