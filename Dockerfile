@@ -4,15 +4,16 @@ FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 # /workspace is the default volume for Runpod & other hosts
 WORKDIR /workspace
 
-# Update apt-get
-RUN apt-get update -y
-
 # Prevents different commands from being stuck by waiting
 # on user input during build
 ENV DEBIAN_FRONTEND noninteractive
 
 # Install misc unix libraries
-RUN apt-get install -y --no-install-recommends \
+RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
+    --mount=target=/var/cache/apt,type=cache,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update -y \
+    && apt-get install -y --no-install-recommends \
 	openssh-server \
 	openssh-client \
 	git \
@@ -32,18 +33,16 @@ RUN apt-get install -y --no-install-recommends \
 	unzip \
 	htop \
 	inotify-tools \
-	ffmpeg \
 	libgl1-mesa-glx \
 	libsm6 \
-	libxext6
-
-RUN apt-get install -y --no-install-recommends \
+	libxext6 \
+	ffmpeg \
 	python3 \
 	python3-pip \
 	python3.10-venv
 
 # Python
-RUN --mount=type=cache,target=/root/.cache python3 -m pip install pip --upgrade
+RUN --mount=type=cache,target=/root/.cache,sharing=locked python3 -m pip install pip --upgrade
 
 # Set up git to support LFS, and to store credentials; useful for Huggingface Hub
 RUN git config --global credential.helper store && \
