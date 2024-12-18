@@ -31,12 +31,13 @@ RUN apt-get install -y --no-install-recommends openssh-server \
                                                unzip \
                                                htop \
                                                inotify-tools \
-						libgl1-mesa-glx \
-						libsm6 \
-						libxext6 \
-						python3 \
-						python3-pip \
-						python3.10-venv
+                                               ffmpeg \
+                                               libgl1-mesa-glx \
+                                               libsm6 \
+                                               libxext6 \
+                                               python3 \
+                                               python3-pip \
+                                               python3.10-venv
 
 # Python
 RUN --mount=type=cache,target=/root/.cache python3 -m pip install pip --upgrade
