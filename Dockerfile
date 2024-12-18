@@ -12,32 +12,35 @@ RUN apt-get update -y
 ENV DEBIAN_FRONTEND noninteractive
 
 # Install misc unix libraries
-RUN apt-get install -y --no-install-recommends openssh-server \
-                                               openssh-client \
-                                               git \
-                                               git-lfs \
-                                               wget \
-                                               curl \
-                                               tmux \
-                                               tldr \
-                                               nvtop \
-                                               vim \
-                                               rsync \
-                                               net-tools \
-                                               less \
-                                               iputils-ping \
-                                               7zip \
-                                               zip \
-                                               unzip \
-                                               htop \
-                                               inotify-tools \
-                                               ffmpeg \
-                                               libgl1-mesa-glx \
-                                               libsm6 \
-                                               libxext6 \
-                                               python3 \
-                                               python3-pip \
-                                               python3.10-venv
+RUN apt-get install -y --no-install-recommends \
+	openssh-server \
+	openssh-client \
+	git \
+	git-lfs \
+	wget \
+	curl \
+	tmux \
+	tldr \
+	nvtop \
+	vim \
+	rsync \
+	net-tools \
+	less \
+	iputils-ping \
+	7zip \
+	zip \
+	unzip \
+	htop \
+	inotify-tools \
+	ffmpeg \
+	libgl1-mesa-glx \
+	libsm6 \
+	libxext6
+
+RUN apt-get install -y --no-install-recommends \
+	python3 \
+	python3-pip \
+	python3.10-venv
 
 # Python
 RUN --mount=type=cache,target=/root/.cache python3 -m pip install pip --upgrade
