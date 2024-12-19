@@ -54,7 +54,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 RUN git lfs install && git config --global credential.helper store
 
 # Python
-RUN --mount=type=cache,target=/root/.cache,sharing=locked python3 -m pip install pip --upgrade
+RUN --mount=type=cache,target=/root/.cache python3 -m pip install pip --upgrade
 
 # HF
 ENV HF_HOME=/workspace/huggingface
