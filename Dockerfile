@@ -65,7 +65,7 @@ RUN --mount=type=cache,target=/root/.cache pip3 install wandb
 
 # Clone SimpleTuner
 #RUN git clone https://github.com/bghira/SimpleTuner --branch release
-RUN git clone https://github.com/bghira/SimpleTuner --branch main # Uncomment to use latest (possibly unstable) version
+RUN git clone https://github.com/clayne/SimpleTuner --branch local # Uncomment to use latest (possibly unstable) version
 
 # Install SimpleTuner
 RUN --mount=type=cache,target=/root/.cache pip3 install poetry
