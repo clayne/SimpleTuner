@@ -63,6 +63,8 @@ RUN --mount=type=cache,target=/root/.cache pip3 install "huggingface_hub[cli]"
 # WanDB
 RUN --mount=type=cache,target=/root/.cache pip3 install wandb
 
+ARG COMMIT
+
 # Clone SimpleTuner
 #RUN git clone https://github.com/bghira/SimpleTuner --branch release
 RUN git clone https://github.com/clayne/SimpleTuner --branch local # Uncomment to use latest (possibly unstable) version
