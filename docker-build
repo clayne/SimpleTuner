@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+while getopts ":-:" opt; do
+	case $opt in
+	-) case "${OPTARG}" in
+		opt)   OPT=1 ;;
+		opt)   OPT="${!OPTIND}"; (( ++OPTIND )) ;;
+		opt=*) OPT="${OPTARG#opt=}" ;;
+	   esac ;;
+	?) exit -1 ;;
+	esac
+done; shift $((OPTIND - 1))
+
+docker build --build-arg COMMIT="$(git log -1 --format=%h)" -t simpletuner:local .
