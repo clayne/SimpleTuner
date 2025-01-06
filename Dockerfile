@@ -63,11 +63,12 @@ RUN --mount=type=cache,target=/root/.cache pip3 install "huggingface_hub[cli]"
 # WanDB
 RUN --mount=type=cache,target=/root/.cache pip3 install wandb
 
-ARG COMMIT
+ARG REPO="bghira/SimpleTuner"
+ARG BRANCH="release"
+ARG COMMIT="HEAD"
 
 # Clone SimpleTuner
-#RUN git clone https://github.com/bghira/SimpleTuner --branch release
-RUN git clone https://github.com/clayne/SimpleTuner --branch local # Uncomment to use latest (possibly unstable) version
+RUN git clone https://github.com/$REPO --branch $BRANCH && git -C SimpleTuner reset --hard $COMMIT
 
 # Install SimpleTuner
 RUN --mount=type=cache,target=/root/.cache pip3 install poetry
