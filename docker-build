@@ -3,15 +3,40 @@
 set -e
 set -o pipefail
 
-while getopts ":-:" opt; do
+repo='bghira/SimpleTuner'
+remote='origin'
+branch='release'
+
+while getopts "c:r:b:-:" opt; do
 	case $opt in
 	-) case "${OPTARG}" in
 		opt)   OPT=1 ;;
 		opt)   OPT="${!OPTIND}"; (( ++OPTIND )) ;;
 		opt=*) OPT="${OPTARG#opt=}" ;;
 	   esac ;;
+	r) repo="$OPTARG" ;;
+	b) branch="$OPTARG" ;;
+	c) commit="$OPTARG" ;;
 	?) exit -1 ;;
 	esac
 done; shift $((OPTIND - 1))
 
-docker build --build-arg COMMIT="$(git log -1 --format=%h)" -t simpletuner:local .
+# if a username-only repo is passed
+if [[ ! $repo =~ / ]]; then
+	repo="$repo/SimpleTuner"
+fi
+
+# e.g. origin/local, upstream/release
+if [[ $branch =~ / ]]; then
+	remote="${branch/\/*}"
+	branch="${branch/*\/}"
+fi
+
+commit="$(git log -1 --format=%h $remote/$branch)"
+
+docker build \
+	${repo:+--build-arg REPO="$repo"} \
+	${branch:+--build-arg BRANCH="$branch"} \
+	${commit:+--build-arg COMMIT="$commit"} \
+	-t simpletuner:"$branch" \
+	.
