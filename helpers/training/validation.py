@@ -34,6 +34,7 @@ from helpers.training.deepspeed import (
     prepare_model_for_deepspeed,
 )
 from transformers.utils import ContextManagers
+from random import randint
 
 logger = logging.getLogger(__name__)
 logger.setLevel(os.environ.get("SIMPLETUNER_LOG_LEVEL") or "INFO")
@@ -558,10 +559,13 @@ class Validation:
             raise Exception("Unknown validation seed source. Options: cpu, gpu")
 
     def _get_generator(self):
+        if self.args.validation_randomize:
+            seed = randint(0, 0x1 << 31)
+        else:
+            seed = self.args.validation_seed or self.args.seed or 0
+
         _validation_seed_source = self._validation_seed_source()
-        _generator = torch.Generator(device=_validation_seed_source).manual_seed(
-            self.args.validation_seed or self.args.seed or 0
-        )
+        _generator = torch.Generator(device=_validation_seed_source).manual_seed(seed)
         return _generator
 
     def clear_text_encoders(self):
@@ -1554,11 +1558,10 @@ class Validation:
                 validation_types = self._validation_types()
                 all_validation_type_results = {}
                 for current_validation_type in validation_types:
-                    if not self.args.validation_randomize:
-                        pipeline_kwargs["generator"] = self._get_generator()
-                        logger.debug(
-                            f"Using a generator? {pipeline_kwargs['generator']}"
-                        )
+                    pipeline_kwargs["generator"] = self._get_generator()
+                    logger.debug(
+                        f"Using a generator? {pipeline_kwargs['generator']}"
+                    )
                     if current_validation_type == "ema":
                         self.enable_ema_for_inference()
                     if self.args.model_family in ["ltxvideo", "wan"]:
