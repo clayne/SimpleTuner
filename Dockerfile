@@ -65,6 +65,9 @@ RUN --mount=type=cache,target=/root/.cache pip3 install "huggingface_hub[cli]"
 # WanDB
 RUN --mount=type=cache,target=/root/.cache pip3 install wandb
 
+# nvitop
+RUN --mount=type=cache,target=/root/.cache pip3 install nvitop
+
 ARG REPO="bghira/SimpleTuner"
 ARG BRANCH="release"
 ARG COMMIT="HEAD"
