@@ -6,8 +6,9 @@ set -o pipefail
 repo='bghira/SimpleTuner'
 remote='origin'
 branch='release'
+image='simpletuner'
 
-while getopts "c:r:b:-:" opt; do
+while getopts "i:c:r:b:-:" opt; do
 	case $opt in
 	-) case "${OPTARG}" in
 		opt)   OPT=1 ;;
@@ -17,6 +18,7 @@ while getopts "c:r:b:-:" opt; do
 	r) repo="$OPTARG" ;;
 	b) branch="$OPTARG" ;;
 	c) commit="$OPTARG" ;;
+	i) image="$OPTARG" ;;
 	?) exit -1 ;;
 	esac
 done; shift $((OPTIND - 1))
@@ -38,5 +40,5 @@ docker build \
 	${repo:+--build-arg REPO="$repo"} \
 	${branch:+--build-arg BRANCH="$branch"} \
 	${commit:+--build-arg COMMIT="$commit"} \
-	-t simpletuner:"$branch" \
+	-t "$image:$branch" \
 	.
