@@ -26,6 +26,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 	nvtop \
 	vim \
 	rsync \
+	rclone \
 	net-tools \
 	less \
 	iputils-ping \
