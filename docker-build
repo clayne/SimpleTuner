@@ -7,8 +7,9 @@ repo='bghira/SimpleTuner'
 remote='origin'
 branch='release'
 image='simpletuner'
+dockerfile='Dockerfile'
 
-while getopts "i:c:r:b:-:" opt; do
+while getopts "t:f:i:c:r:b:-:" opt; do
 	case $opt in
 	-) case "${OPTARG}" in
 		opt)   OPT=1 ;;
@@ -19,6 +20,8 @@ while getopts "i:c:r:b:-:" opt; do
 	b) branch="$OPTARG" ;;
 	c) commit="$OPTARG" ;;
 	i) image="$OPTARG" ;;
+	f) dockerfile="$OPTARG" ;;
+	t) tag="$OPTARG" ;;
 	?) exit -1 ;;
 	esac
 done; shift $((OPTIND - 1))
@@ -37,8 +40,9 @@ fi
 commit="$(git log -1 --format=%h $remote/$branch)"
 
 docker build \
+	--file $dockerfile \
+	-t "$image:${tag:-$branch}" \
 	${repo:+--build-arg REPO="$repo"} \
 	${branch:+--build-arg BRANCH="$branch"} \
 	${commit:+--build-arg COMMIT="$commit"} \
-	-t "$image:$branch" \
 	.
