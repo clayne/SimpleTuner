@@ -3,13 +3,14 @@
 set -e
 set -o pipefail
 
-repo='bghira/SimpleTuner'
+repo='SimpleTuner'
+owner='bghira'
 remote='origin'
 branch='release'
 image='simpletuner'
 dockerfile='Dockerfile'
 
-while getopts "t:f:i:c:r:b:-:" opt; do
+while getopts "u:t:f:i:c:r:b:-:" opt; do
 	case $opt in
 	-) case "${OPTARG}" in
 		opt)   OPT=1 ;;
@@ -17,6 +18,7 @@ while getopts "t:f:i:c:r:b:-:" opt; do
 		opt=*) OPT="${OPTARG#opt=}" ;;
 	   esac ;;
 	r) repo="$OPTARG" ;;
+	u) owner="$OPTARG" ;;
 	b) branch="$OPTARG" ;;
 	c) commit="$OPTARG" ;;
 	i) image="$OPTARG" ;;
@@ -25,11 +27,6 @@ while getopts "t:f:i:c:r:b:-:" opt; do
 	?) exit -1 ;;
 	esac
 done; shift $((OPTIND - 1))
-
-# if a username-only repo is passed
-if [[ ! $repo =~ / ]]; then
-	repo="$repo/SimpleTuner"
-fi
 
 # e.g. origin/local, upstream/release
 if [[ $branch =~ / ]]; then
@@ -43,6 +40,7 @@ docker build \
 	--file $dockerfile \
 	-t "$image:${tag:-$branch}" \
 	${repo:+--build-arg REPO="$repo"} \
+	${owner:+--build-arg OWNER="$owner"} \
 	${branch:+--build-arg BRANCH="$branch"} \
 	${commit:+--build-arg COMMIT="$commit"} \
 	.
