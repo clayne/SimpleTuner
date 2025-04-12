@@ -72,12 +72,13 @@ RUN --mount=type=cache,target=/root/.cache pip3 install wandb
 # nvitop
 RUN --mount=type=cache,target=/root/.cache pip3 install nvitop
 
-ARG REPO="bghira/SimpleTuner"
+ARG REPO="SimpleTuner"
+ARG OWNER="bghira"
 ARG BRANCH="release"
 ARG COMMIT="HEAD"
 
 # Clone SimpleTuner
-RUN git clone https://github.com/$REPO --branch $BRANCH && git -C SimpleTuner reset --hard $COMMIT
+RUN git clone https://github.com/$OWNER/$REPO --branch $BRANCH && git -C SimpleTuner reset --hard $COMMIT
 
 # Install SimpleTuner
 RUN --mount=type=cache,target=/root/.cache pip3 install poetry
