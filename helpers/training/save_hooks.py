@@ -17,7 +17,8 @@ import json
 from safetensors import safe_open
 from safetensors.torch import save_file
 from tqdm import tqdm
-
+from helpers.configuration.loader import load_config
+import copy
 
 logger = logging.getLogger("SaveHookManager")
 logger.setLevel(os.environ.get("SIMPLETUNER_LOG_LEVEL", "WARNING"))
@@ -168,6 +169,37 @@ class SaveHookManager:
 
         self.model.save_lora_weights(output_dir, **lora_save_parameters)
 
+    def gen_metadata(self):
+        global_config = load_config(None, False, True)
+
+        lycoris_config = None
+        with open(self.args.lycoris_config, "r") as f:
+            lycoris_config = json.load(f)
+
+        user_prompt_library = None
+        with open(self.args.user_prompt_library, "r") as f:
+            user_prompt_library = json.load(f)
+
+        data_backend_config = None
+        with open(self.args.data_backend_config, "r") as f:
+            data_backend_config = json.load(f)
+
+        # redact any secrets in data backends
+        data_backend_config = copy.deepcopy(data_backend_config)
+        for backend in data_backend_config:
+            for key in backend.keys():
+                if key.startswith('aws'):
+                    backend[key] = 'REDACTED'
+
+        return {
+            'config': json.dumps({
+                'lycoris_config': lycoris_config,
+                'user_prompt_library': user_prompt_library,
+                'data_backend_config': data_backend_config,
+                'global_config': global_config,
+            })
+        }
+
     def _save_lycoris(self, models, weights, output_dir):
         """
         save wrappers for lycoris. For now, text encoders are not trainable
@@ -182,14 +214,12 @@ class SaveHookManager:
             if weights:
                 weights.pop()
 
-        lycoris_config = None
-        with open(self.args.lycoris_config, "r") as f:
-            lycoris_config = json.load(f)
+        metadata = self.gen_metadata()
 
         self.accelerator._lycoris_wrapped_network.save_weights(
             os.path.join(output_dir, LORA_SAFETENSORS_FILENAME),
             list(self.accelerator._lycoris_wrapped_network.parameters())[0].dtype,
-            {"lycoris_config": json.dumps(lycoris_config)},  # metadata
+            metadata,  # metadata
         )
         if self.args.use_ema:
             # we'll store lycoris weights.
@@ -203,7 +233,7 @@ class SaveHookManager:
             self.accelerator._lycoris_wrapped_network.save_weights(
                 os.path.join(output_dir, "ema", EMA_SAFETENSORS_FILENAME),
                 list(self.accelerator._lycoris_wrapped_network.parameters())[0].dtype,
-                {"lycoris_config": json.dumps(lycoris_config)},  # metadata
+                metadata,  # metadata
             )
             self.ema_model.restore(
                 self.accelerator._lycoris_wrapped_network.parameters()

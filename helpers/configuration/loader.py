@@ -27,8 +27,7 @@ def attach_env_to_path_if_not_present(backend: str, env: str = None):
         return f"config/{env}/{backend_cfg_path}"
     return f"config/{backend_cfg_path}"
 
-
-def load_config(args: dict = None, exit_on_error: bool = False):
+def load_config(args: dict = None, exit_on_error: bool = False, skip_parse: bool = False):
     # Check if help is requested; bypass configuration loading if true
     if "-h" in sys.argv or "--help" in sys.argv:
         return helpers["cmd"]()
@@ -48,9 +47,13 @@ def load_config(args: dict = None, exit_on_error: bool = False):
             config_backend_path = os.path.join("config", config_env)
         StateTracker.set_config_path(config_backend_path)
         logger.info("Using {} configuration backend.".format(config_backend))
+
         mapped_config = helpers[config_backend]()
         if config_backend == "cmd":
             return mapped_config
+
+    if skip_parse:
+        return mapped_config
 
     # Other configs need to be passed through parse_cmdline_args to be made whole and have complete defaults and safety checks applied.
     configuration = helpers["cmd"](
