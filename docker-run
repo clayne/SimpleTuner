@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+TAG_DEFAULT='release'
+IMAGE="simpletuner:$TAG_DEFAULT"
+ATTACH_ARGS=( -it )
+SSH_PORT=6022
+
+while getopts ":sdi:t:" opt; do
+	case $opt in
+	d) ATTACH_ARGS=( -d ) ;;
+	s) DIRECT_SHELL=1 ;;
+	i) IMAGE="$OPTARG" ;;
+	t) TAG="$OPTARG" ;;
+	?) exit -1 ;;
+	esac
+done; shift $((OPTIND - 1))
+
+# If image is specified with a tag but $TAG is
+# specified, override tag provided with image.
+IMAGE_TAG="${IMAGE/*:}"
+IMAGE="${IMAGE/:*}"
+if [[ -z "$TAG" ]]; then
+	TAG="${TAG:-${IMAGE_TAG:-${TAG_DEFAULT}}}"
+fi
+
+docker run \
+	--gpus all \
+	-p $SSH_PORT:22 \
+	${DIRECT_SHELL:+--entrypoint /bin/bash} \
+	"${ATTACH_ARGS[@]}" \
+	"$@" \
+	$IMAGE:$TAG
