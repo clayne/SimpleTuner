@@ -3,44 +3,42 @@
 set -e
 set -o pipefail
 
-repo='SimpleTuner'
-owner='bghira'
-remote='origin'
-branch='release'
-image='simpletuner'
-dockerfile='Dockerfile'
+REPO='SimpleTuner'
+OWNER='bghira'
+REMOTE='origin'
+BRANCH='release'
+IMAGE='simpletuner'
+DOCKERFILE='Dockerfile'
 
-while getopts "u:t:f:i:c:r:b:-:" opt; do
+while getopts "u:t:f:i:c:r:b:" opt; do
 	case $opt in
-	-) case "${OPTARG}" in
-		opt)   OPT=1 ;;
-		opt)   OPT="${!OPTIND}"; (( ++OPTIND )) ;;
-		opt=*) OPT="${OPTARG#opt=}" ;;
-	   esac ;;
-	r) repo="$OPTARG" ;;
-	u) owner="$OPTARG" ;;
-	b) branch="$OPTARG" ;;
-	c) commit="$OPTARG" ;;
-	i) image="$OPTARG" ;;
-	f) dockerfile="$OPTARG" ;;
-	t) tag="$OPTARG" ;;
+	r) REPO="$OPTARG" ;;
+	u) OWNER="$OPTARG" ;;
+	b) BRANCH="$OPTARG" ;;
+	c) COMMIT="$OPTARG" ;;
+	i) IMAGE="$OPTARG" ;;
+	f) DOCKERFILE="$OPTARG" ;;
+	t) TAG="$OPTARG" ;;
 	?) exit -1 ;;
 	esac
 done; shift $((OPTIND - 1))
 
 # e.g. origin/local, upstream/release
-if [[ $branch =~ / ]]; then
-	remote="${branch/\/*}"
-	branch="${branch/*\/}"
+if [[ $BRANCH =~ / ]]; then
+	REMOTE="${BRANCH/\/*}"
+	BRANCH="${BRANCH/*\/}"
 fi
 
-commit="$(git log -1 --format=%h $remote/$branch)"
+if [[ -z "$COMMIT" ]]; then
+	COMMIT="$(git log -1 --format=%h $REMOTE/$BRANCH)"
+fi
 
 docker build \
-	--file $dockerfile \
-	-t "$image:${tag:-$branch}" \
-	${repo:+--build-arg REPO="$repo"} \
-	${owner:+--build-arg OWNER="$owner"} \
-	${branch:+--build-arg BRANCH="$branch"} \
-	${commit:+--build-arg COMMIT="$commit"} \
+	${REPO:+--build-arg REPO="$REPO"} \
+	${OWNER:+--build-arg OWNER="$OWNER"} \
+	${BRANCH:+--build-arg BRANCH="$BRANCH"} \
+	${COMMIT:+--build-arg COMMIT="$COMMIT"} \
+	-t "$IMAGE:${TAG:-$BRANCH}" \
+	--file $DOCKERFILE \
+	"$@" \
 	.
