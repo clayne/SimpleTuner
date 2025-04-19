@@ -87,71 +87,87 @@ class StateTracker:
                 Path(cls.args.output_dir) / f"{cache_name}{data_backend_id_suffix}.json"
             )
             logger.info("(rank: %d) delete_cache_files: path = %s (pre-check exists), data_backend_id = %s" % (get_rank(), cache_path, data_backend_id))
-            lock = FileLock(f"{cache_path}.lock")
-            try:
-                with lock.acquire(blocking = False):
-                    if cache_path.exists():
-                        try:
-                            logger.info("(rank: %d) delete_cache_files: path = %s (unlinking), data_backend_id = %s" % (get_rank(), cache_path, data_backend_id))
-                            cache_path.unlink()
-                        except:
-                            pass
-                    else:
-                        logger.info("(rank: %d) delete_cache_files: path = %s, does not exist, data_backend_id = %s" % (get_rank(), cache_path, data_backend_id))
-            except Timeout:
-                logger.error("(rank: %d) delete_cache_files: path = %s, lock conflict! data_backend_id = %s (delete)" % (get_rank(), cache_path, data_backend_id))
-#                raise
+
+            if not cache_path.exists():
+                logger.info("(rank: %d) delete_cache_files: path = %s, does not exist, data_backend_id = %s" % (get_rank(), cache_path, data_backend_id))
+                continue
+
+            with cache_path.open("r") as f:
+                locked = 0
+                try:
+                    fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    locked = 1
+                except Exception as e:
+                    logger.error("(rank: %d) delete_cache_files: path = %s, data_backend_id = %s, LOCK CONFLICT" % (get_rank(), cache_path, data_backend_id))
+
+                try:
+                    logger.info("(rank: %d) delete_cache_files: path = %s (unlinking), data_backend_id = %s" % (get_rank(), cache_path, data_backend_id))
+                    cache_path.unlink()
+                except:
+                    pass
+
+                if locked:
+                    fcntl.flock(f, fcntl.LOCK_UN)
 
     @classmethod
     def _load_from_disk(cls, cache_name):
         cache_path = Path(cls.args.output_dir) / f"{cache_name}.json"
-        logger.info("(rank: %d) _load_from_disk: path = %s, ENTRY" % (get_rank(), cache_path))
-        lock = FileLock(f"{cache_path}.lock")
-        try:
-            with lock.acquire(blocking = False):
-                if cache_path.exists():
-                    logger.info("(rank: %d) _load_from_disk: path = %s, size = %d (pre-open)" % (get_rank(), cache_path, os.stat(cache_path).st_size))
-                    try:
-                        with cache_path.open("r") as f:
-                            logger.info("(rank: %d) _load_from_disk: path = %s, size = %d" % (get_rank(), cache_path, os.stat(cache_path).st_size))
-                            d = json.load(f)
-                            return d
-                    except Exception as e:
-                        logger.error(
-                            f"(rank: {get_rank()}) _load_from_disk: Invalidating cache: error loading {cache_path} from disk, size = {os.stat(cache_path).st_size}. {e}"
-                        )
-                        with cache_path.open("r") as f:
-                            lines = f.readlines()
-                            for l in lines:
-                                logger.error("(rank: %d) _load_from_disk: line: %s" % (get_rank(), l.strip()))
-                        raise e
+#        logger.info("(rank: %d) _load_from_disk: path = %s, ENTRY" % (get_rank(), cache_path))
+        if not cache_path.exists():
+            logger.info("(rank: %d) _load_from_disk: path = %s, does not exist" % (get_rank(), cache_path))
+            return None
 
-                        return None
-                else:
-                    logger.info("(rank: %d) _load_from_disk: path = %s, does not exist" % (get_rank(), cache_path))
-                return None
-        except Timeout:
-            logger.error("(rank: %d) _load_from_disk: path = %s, lock conflict! (read)" % (get_rank(), cache_path))
+        logger.info("(rank: %d) _load_from_disk: path = %s, size = %d (pre-open)" % (get_rank(), cache_path, os.stat(cache_path).st_size))
+        with cache_path.open("r") as f:
+            locked = 0
+            try:
+                fcntl.flock(f, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                locked = 1
+            except Exception as e:
+                logger.error("(rank: %d) _load_from_disk: path = %s, LOCK CONFLICT" % (get_rank(), cache_path))
+
+            logger.info("(rank: %d) _load_from_disk: path = %s, size = %d" % (get_rank(), cache_path, os.stat(cache_path).st_size))
+            try:
+                d = json.load(f)
+                return d
+            except Exception as e:
+                logger.error(
+                    f"(rank: {get_rank()}) _load_from_disk: Invalidating cache: error loading {cache_path} from disk, size = {os.stat(cache_path).st_size}. {e}"
+                )
+                with cache_path.open("r") as f:
+                    lines = f.readlines()
+                    for l in lines:
+                        logger.error("(rank: %d) _load_from_disk: line: %s" % (get_rank(), l.strip()))
+                raise e
+
+            if locked:
+                fcntl.flock(f, fcntl.LOCK_UN)
+
+        return None
 
     @classmethod
     def _save_to_disk(cls, cache_name, data):
         cache_path = Path(cls.args.output_dir) / f"{cache_name}.json"
-        logger.info("(rank: %d): _save_to_disk: path = %s, ENTRY" % (get_rank(), cache_path))
-        lock = FileLock(f"{cache_path}.lock")
-        try:
-            with lock.acquire(blocking = False):
-                with cache_path.open("w") as f:
-                    try:
-                        logger.info("(rank: %d): _save_to_disk: writing json to %s, len == %d" % (get_rank(), cache_path, len(json.dumps(data))))
-                        json.dump(data, f)
-                    except Exception as e:
-                        logger.error(
-                            f"(rank: {get_rank()}) _save_to_disk: error writing {cache_path} to disk. {e}"
-                        )
-                        raise e
-        except Timeout:
-            logger.error("(rank: %d) _save_to_disk: path = %s, lock conflict! (write)" % (get_rank(), cache_path))
-#            raise
+#        logger.info("(rank: %d): _save_to_disk: path = %s, ENTRY" % (get_rank(), cache_path))
+        with cache_path.open("w") as f:
+            locked = 0
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                locked = 1
+            except Exception as e:
+                logger.error("(rank: %d) _save_to_disk: path = %s, LOCK CONFLICT" % (get_rank(), cache_path))
+
+            try:
+                logger.info("(rank: %d) _save_to_disk: writing json to %s, len == %d" % (get_rank(), cache_path, len(json.dumps(data))))
+                json.dump(data, f)
+            except Exception as e:
+                logger.error(
+                    f"(rank: {get_rank()}) _save_to_disk: error writing {cache_path} to disk. {e}"
+                )
+                raise e
+
+            if locked:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
     @classmethod
     def set_config_path(cls, config_path: str):
