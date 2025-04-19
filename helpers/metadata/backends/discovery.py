@@ -11,6 +11,7 @@ import traceback
 from io import BytesIO
 from helpers.image_manipulation.brightness import calculate_luminance
 from helpers.training import image_file_extensions, video_file_extensions
+from helpers.training.multi_process import should_log, rank_info, _get_rank as get_rank
 
 logger = logging.getLogger("DiscoveryMetadataBackend")
 if should_log():
@@ -87,16 +88,17 @@ class DiscoveryMetadataBackend(MetadataBackend):
             self.aspect_ratio_bucket_indices = {}
             return list(all_image_files.keys())
         if all_image_files is None:
-            logger.debug("No image file cache available, retrieving fresh")
+            logger.debug("(rank: %d) _discover_new_files: No image file cache available, retrieving fresh" % get_rank())
             all_image_files = self.data_backend.list_files(
                 instance_data_dir=self.instance_data_dir,
                 file_extensions=image_file_extensions,
             )
+            logger.debug("(rank: %d) _discover_new_files: about to call set_image_files() for data_backend_id = %s" % (get_rank(), self.data_backend.id))
             all_image_files = StateTracker.set_image_files(
                 all_image_files, data_backend_id=self.data_backend.id
             )
         else:
-            logger.debug("Using cached image file list")
+            logger.debug("(rank: %d) _discover_new_files: Using cached image file list" % get_rank())
 
         # Flatten the list if it contains nested lists
         if any(isinstance(i, list) for i in all_image_files):

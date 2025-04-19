@@ -569,6 +569,7 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
         logger.debug(f"rank {get_rank()} might skip discovery..")
         with accelerator.main_process_first():
             logger.debug(f"rank {get_rank()} is discovering all files")
+            logger.debug(f"rank {get_rank()} is about to call [text_embed_cache].discover_all_files()")
             init_backend["text_embed_cache"].discover_all_files()
         logger.debug(f"rank {get_rank()} is waiting for other processes")
         accelerator.wait_for_everyone()
@@ -582,6 +583,7 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
             logger.debug(f"rank {get_rank()} may skip computing the embedding..")
             with accelerator.main_process_first():
                 logger.debug(f"rank {get_rank()} is computing the null embed")
+                logger.debug(f"rank {get_rank()} is about to call [text_embed_cache].compute_embeddings_for_prompts()")
                 init_backend["text_embed_cache"].compute_embeddings_for_prompts(
                     [""], return_concat=False, load_from_cache=False
                 )
@@ -758,6 +760,7 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
 
         preserve_data_backend_cache = backend.get("preserve_data_backend_cache", False)
         if not preserve_data_backend_cache:
+            logger.debug(f"rank {get_rank()} is about to call delete_cache_files() for {init_backend['id']}")
             StateTracker.delete_cache_files(
                 data_backend_id=init_backend["id"],
                 preserve_data_backend_cache=preserve_data_backend_cache,
@@ -916,12 +919,14 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
                 info_log(
                     f"(id={init_backend['id']}) Refreshing aspect buckets on main process."
                 )
+                logger.debug(f"rank {get_rank()} is about to call [metadata_backend].refresh_buckets()")
                 init_backend["metadata_backend"].refresh_buckets(rank_info())
         accelerator.wait_for_everyone()
         if not accelerator.is_main_process:
             info_log(
                 f"(id={init_backend['id']}) Reloading bucket manager cache on subprocesses."
             )
+            logger.debug(f"rank {get_rank()} is about to call [metadata_backend].reload_cache()")
             init_backend["metadata_backend"].reload_cache()
         accelerator.wait_for_everyone()
         if init_backend["metadata_backend"].has_single_underfilled_bucket():
@@ -938,6 +943,7 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
         apply_padding = True if not args.max_train_steps or args.max_train_steps == 0 else False
 
         # Now split the contents of these buckets between all processes
+        logger.debug(f"rank {get_rank()} is about to call [metadata_backend].split_buckets_between_processes()")
         init_backend["metadata_backend"].split_buckets_between_processes(
             gradient_accumulation_steps=args.gradient_accumulation_steps,
             apply_padding=apply_padding
@@ -1106,6 +1112,7 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
             and "text" not in backend.get("skip_file_discovery", "")
         ):
             info_log(f"(id={init_backend['id']}) Collecting captions.")
+            logger.debug(f"rank {get_rank()} is about to call PromptHandler.get_all_captions()")
             captions, images_missing_captions = PromptHandler.get_all_captions(
                 data_backend=init_backend["data_backend"],
                 instance_data_dir=init_backend["instance_data_dir"],
@@ -1122,12 +1129,15 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
                 init_backend["metadata_backend"], "remove_images"
             ):
                 # we'll tell the aspect bucket manager to remove these images.
+                logger.debug(f"rank {get_rank()} is about to call [metadata_backend].remove_images()")
                 init_backend["metadata_backend"].remove_images(images_missing_captions)
             caption_strategy = backend.get("caption_strategy", args.caption_strategy)
             info_log(
                 f"(id={init_backend['id']}) Initialise text embed pre-computation using the {caption_strategy} caption strategy. We have {len(captions)} captions to process."
             )
+            logger.debug(f"rank {get_rank()} moving text encoder to gpu")
             move_text_encoders(text_encoders, accelerator.device)
+            logger.debug(f"rank {get_rank()} is about to call [text_embed_cache].compute_embeddings_for_prompts()")
             init_backend["text_embed_cache"].compute_embeddings_for_prompts(
                 captions, return_concat=False, load_from_cache=False
             )
@@ -1172,7 +1182,10 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
                 raise ValueError(
                     f"VAE image embed cache directory {backend.get('cache_dir_vae')} is not set. This is required for the VAE image embed cache."
                 )
+            logger.debug(f"rank {get_rank()} moving text encoder to cpu")
             move_text_encoders(text_encoders, "cpu")
+
+            logger.debug(f"rank {get_rank()} is about to create VAECache")
             init_backend["vaecache"] = VAECache(
                 id=init_backend["id"],
                 dataset_type=init_backend["dataset_type"],
@@ -1217,14 +1230,23 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
                 StateTracker.get_webhook_handler()
             )
 
+#            move_text_encoders(text_encoders, accelerator.device)
             if not args.vae_cache_ondemand:
                 info_log(f"(id={init_backend['id']}) Discovering cache objects..")
                 if accelerator.is_local_main_process:
+                    logger.debug(f"rank {get_rank()} is about to call [vaecache].discover_all_files()")
                     init_backend["vaecache"].discover_all_files()
+                logger.debug(f"rank {get_rank()} is about to wait for everyone (not args.vae_cache_ondemand)")
                 accelerator.wait_for_everyone()
+
+#            logger.debug(f"rank {get_rank()} is about to wait for everyone")
+#            accelerator.wait_for_everyone()
+
+            logger.debug(f"rank {get_rank()} is about to call get_image_files()")
             all_image_files = StateTracker.get_image_files(
                 data_backend_id=init_backend["id"]
             )
+            logger.debug(f"rank {get_rank()} is about to call [vaecache].build_vae_cache_filename_map()")
             init_backend["vaecache"].build_vae_cache_filename_map(
                 all_image_files=all_image_files
             )
@@ -1242,16 +1264,19 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
             info_log(
                 f"Beginning error scan for dataset {init_backend['id']}. Set 'scan_for_errors' to False in the dataset config to disable this."
             )
+            logger.debug(f"rank {get_rank()} about to call [metadata_backend].handle_vae_cache_inconsistencies()")
             init_backend["metadata_backend"].handle_vae_cache_inconsistencies(
                 vae_cache=init_backend["vaecache"],
                 vae_cache_behavior=backend.get(
                     "vae_cache_scan_behaviour", args.vae_cache_scan_behaviour
                 ),
             )
+            logger.debug(f"rank {get_rank()} about to call [metadata_backend].scan_for_metadata()")
             init_backend["metadata_backend"].scan_for_metadata()
 
         accelerator.wait_for_everyone()
         if not accelerator.is_main_process:
+            logger.debug(f"rank {get_rank()} about to call [metadata_backend].load_image_metadata()")
             init_backend["metadata_backend"].load_image_metadata()
         accelerator.wait_for_everyone()
 
@@ -1269,10 +1294,12 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
             logger.debug(f"Encoding images during training: {args.vae_cache_ondemand}")
             accelerator.wait_for_everyone()
 
+        logger.debug(f"rank {get_rank()} moving text encoder to gpu")
         move_text_encoders(text_encoders, accelerator.device)
         info_log(f"Configured backend: {init_backend}")
 
         StateTracker.register_data_backend(init_backend)
+        logger.debug(f"rank {get_rank()} about to call [metadata_backend].save_cache()")
         init_backend["metadata_backend"].save_cache()
 
     # For each image backend, connect it to its conditioning backend.
