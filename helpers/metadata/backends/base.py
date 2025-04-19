@@ -379,6 +379,7 @@ class MetadataBackend:
             [len(bucket) for bucket in self.aspect_ratio_bucket_indices.values()]
         )
         if total_images != post_total:
+            logger.debug(f"split_buckets_between_processes: Setting read_only true because total_images != post_total ({total_images} != {post_total})")
             self.read_only = True
 
         logger.debug(f"Count of items after split: {post_total}")

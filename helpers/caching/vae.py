@@ -252,6 +252,8 @@ class VAECache(WebhookMixin):
             ),
             data_backend_id=self.id,
         )
+        self.debug_log("discover_all_files: id = %s, len(all_image_files) == %d" % (self.id, len(all_image_files)))
+
         # This isn't returned, because we merely check if it's stored, or, store it.
         (
             StateTracker.get_vae_cache_files(data_backend_id=self.id)

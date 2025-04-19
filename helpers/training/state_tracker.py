@@ -2,6 +2,11 @@ from os import environ
 from pathlib import Path
 import json
 import logging
+import sys
+import os
+import fcntl
+from helpers.training.multi_process import should_log, rank_info, _get_rank as get_rank
+from filelock import Timeout, FileLock
 
 logger = logging.getLogger("StateTracker")
 logger.setLevel(environ.get("SIMPLETUNER_LOG_LEVEL", "INFO"))
@@ -12,6 +17,9 @@ filename_mapping = {
     "all_text_cache_files": "text",
 }
 
+def touch(filename):
+    with open(filename, 'w'):
+        os.utime(filename, None)
 
 class StateTracker:
     config_path = None
@@ -70,6 +78,7 @@ class StateTracker:
             "all_text_cache_files",
         ]:
             if filename_mapping[cache_name] in str(preserve_data_backend_cache):
+                logger.info("(rank: %d) delete_cache_files: preserving %s, data_backend_id = %s" % (get_rank(), cache_name, data_backend_id))
                 continue
             data_backend_id_suffix = ""
             if data_backend_id:
@@ -77,31 +86,72 @@ class StateTracker:
             cache_path = (
                 Path(cls.args.output_dir) / f"{cache_name}{data_backend_id_suffix}.json"
             )
-            if cache_path.exists():
-                try:
-                    cache_path.unlink()
-                except:
-                    pass
+            logger.info("(rank: %d) delete_cache_files: path = %s (pre-check exists), data_backend_id = %s" % (get_rank(), cache_path, data_backend_id))
+            lock = FileLock(f"{cache_path}.lock")
+            try:
+                with lock.acquire(blocking = False):
+                    if cache_path.exists():
+                        try:
+                            logger.info("(rank: %d) delete_cache_files: path = %s (unlinking), data_backend_id = %s" % (get_rank(), cache_path, data_backend_id))
+                            cache_path.unlink()
+                        except:
+                            pass
+                    else:
+                        logger.info("(rank: %d) delete_cache_files: path = %s, does not exist, data_backend_id = %s" % (get_rank(), cache_path, data_backend_id))
+            except Timeout:
+                logger.error("(rank: %d) delete_cache_files: path = %s, lock conflict! data_backend_id = %s (delete)" % (get_rank(), cache_path, data_backend_id))
+#                raise
 
     @classmethod
     def _load_from_disk(cls, cache_name):
         cache_path = Path(cls.args.output_dir) / f"{cache_name}.json"
-        if cache_path.exists():
-            try:
-                with cache_path.open("r") as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.error(
-                    f"Invalidating cache: error loading {cache_name} from disk. {e}"
-                )
+        logger.info("(rank: %d) _load_from_disk: path = %s, ENTRY" % (get_rank(), cache_path))
+        lock = FileLock(f"{cache_path}.lock")
+        try:
+            with lock.acquire(blocking = False):
+                if cache_path.exists():
+                    logger.info("(rank: %d) _load_from_disk: path = %s, size = %d (pre-open)" % (get_rank(), cache_path, os.stat(cache_path).st_size))
+                    try:
+                        with cache_path.open("r") as f:
+                            logger.info("(rank: %d) _load_from_disk: path = %s, size = %d" % (get_rank(), cache_path, os.stat(cache_path).st_size))
+                            d = json.load(f)
+                            return d
+                    except Exception as e:
+                        logger.error(
+                            f"(rank: {get_rank()}) _load_from_disk: Invalidating cache: error loading {cache_path} from disk, size = {os.stat(cache_path).st_size}. {e}"
+                        )
+                        with cache_path.open("r") as f:
+                            lines = f.readlines()
+                            for l in lines:
+                                logger.error("(rank: %d) _load_from_disk: line: %s" % (get_rank(), l.strip()))
+                        raise e
+
+                        return None
+                else:
+                    logger.info("(rank: %d) _load_from_disk: path = %s, does not exist" % (get_rank(), cache_path))
                 return None
-        return None
+        except Timeout:
+            logger.error("(rank: %d) _load_from_disk: path = %s, lock conflict! (read)" % (get_rank(), cache_path))
 
     @classmethod
     def _save_to_disk(cls, cache_name, data):
         cache_path = Path(cls.args.output_dir) / f"{cache_name}.json"
-        with cache_path.open("w") as f:
-            json.dump(data, f)
+        logger.info("(rank: %d): _save_to_disk: path = %s, ENTRY" % (get_rank(), cache_path))
+        lock = FileLock(f"{cache_path}.lock")
+        try:
+            with lock.acquire(blocking = False):
+                with cache_path.open("w") as f:
+                    try:
+                        logger.info("(rank: %d): _save_to_disk: writing json to %s, len == %d" % (get_rank(), cache_path, len(json.dumps(data))))
+                        json.dump(data, f)
+                    except Exception as e:
+                        logger.error(
+                            f"(rank: {get_rank()}) _save_to_disk: error writing {cache_path} to disk. {e}"
+                        )
+                        raise e
+        except Timeout:
+            logger.error("(rank: %d) _save_to_disk: path = %s, lock conflict! (write)" % (get_rank(), cache_path))
+#            raise
 
     @classmethod
     def set_config_path(cls, config_path: str):
@@ -164,28 +214,40 @@ class StateTracker:
     @classmethod
     def set_image_files(cls, raw_file_list: list, data_backend_id: str):
         if cls.all_image_files[data_backend_id] is not None:
+            logger.debug("(rank: %d): set_image_files: is not None, calling clear(), data_backend_id = %s" % (get_rank(), data_backend_id))
             cls.all_image_files[data_backend_id].clear()
         else:
+            logger.debug("(rank: %d): set_image_files: is None, initializing to {}, data_backend_id = %s" % (get_rank(), data_backend_id))
             cls.all_image_files[data_backend_id] = {}
         for subdirectory_list in raw_file_list:
             _, _, files = subdirectory_list
             for image in files:
                 cls.all_image_files[data_backend_id][image] = False
+        logger.debug("(rank: %d): set_image_files: about to call save_to_disk, data_backend_id = %s" % (get_rank(), data_backend_id))
         cls._save_to_disk(
             "all_image_files_{}".format(data_backend_id),
             cls.all_image_files[data_backend_id],
         )
         logger.debug(
-            f"set_image_files found {len(cls.all_image_files[data_backend_id])} images."
+            f"(rank: {get_rank()}) set_image_files found {len(cls.all_image_files[data_backend_id])} images, data_backend_id = {data_backend_id}"
         )
         return cls.all_image_files[data_backend_id]
 
     @classmethod
     def get_image_files(cls, data_backend_id: str):
         if data_backend_id not in cls.all_image_files:
+            logger.debug("(rank: %d) get_image_files: data_backend_id NOT in cls.all_image_files, data_backend_id = %s" % (get_rank(), data_backend_id))
             cls.all_image_files[data_backend_id] = cls._load_from_disk(
                 "all_image_files_{}".format(data_backend_id)
             )
+        else:
+            logger.debug("(rank: %d) get_image_files: data_backend_id in cls.all_image_files, data_backend_id = %s" % (get_rank(), data_backend_id))
+
+        if cls.all_image_files[data_backend_id]:
+            logger.debug("(rank: %d) get_image_files: len == %d, databackend_id = %s" % (get_rank(), len(cls.all_image_files[data_backend_id]), data_backend_id))
+        else:
+            logger.debug("(rank: %d) get_image_files: cls.all_image_files[data_backend_id] is nil, databackend_id = %s" % (get_rank(), data_backend_id))
+
         return cls.all_image_files[data_backend_id]
 
     @classmethod
@@ -322,6 +384,7 @@ class StateTracker:
             _, _, files = subdirectory_list
             for image in files:
                 cls.all_vae_cache_files[data_backend_id][image] = False
+        logger.debug("(rank: %d): set_vae_cache_files: about to call save_to_disk" % get_rank())
         cls._save_to_disk(
             "all_vae_cache_files_{}".format(data_backend_id),
             cls.all_vae_cache_files[data_backend_id],
@@ -351,6 +414,7 @@ class StateTracker:
             _, _, files = subdirectory_list
             for text_embed_path in files:
                 cls.all_text_cache_files[data_backend_id][text_embed_path] = False
+        logger.debug("(rank: %d): all_text_cache_files: about to call save_to_disk" % get_rank())
         cls._save_to_disk(
             "all_text_cache_files_{}".format(data_backend_id),
             cls.all_text_cache_files[data_backend_id],
@@ -370,6 +434,7 @@ class StateTracker:
     @classmethod
     def set_caption_files(cls, caption_files):
         cls.all_caption_files = caption_files
+        logger.debug("(rank: %d): all_caption_files: about to call save_to_disk" % get_rank())
         cls._save_to_disk("all_caption_files", cls.all_caption_files)
 
     @classmethod
@@ -535,6 +600,7 @@ class StateTracker:
         if dataloader_resolution not in cls.aspect_resolution_map:
             cls.aspect_resolution_map[dataloader_resolution] = {}
         cls.aspect_resolution_map[dataloader_resolution][str(aspect)] = resolution
+        logger.debug("(rank: %d): set_resolution_by_aspect: about to call save_to_disk" % get_rank())
         cls._save_to_disk(
             f"aspect_resolution_map-{dataloader_resolution}",
             cls.aspect_resolution_map[dataloader_resolution],
@@ -545,6 +611,7 @@ class StateTracker:
 
     @classmethod
     def save_aspect_resolution_map(cls, dataloader_resolution: float):
+        logger.debug("(rank: %d): save_aspect_resolution_map: about to call save_to_disk" % get_rank())
         cls._save_to_disk(
             f"aspect_resolution_map-{dataloader_resolution}",
             cls.aspect_resolution_map[dataloader_resolution],

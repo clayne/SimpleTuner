@@ -2029,6 +2029,7 @@ class Trainer:
                     # we only compute the aspect ratio indices on the main process.
                     # we have to set read_only to False since we're generating a new, un-split list.
                     # otherwise, we can't actually save the new cache to disk.
+                    logger.debug("_epoch_rollver: setting read_only to false")
                     backend["metadata_backend"].read_only = False
                     # this will generate+save the new cache to the storage backend.
                     backend["metadata_backend"].compute_aspect_ratio_bucket_indices(
