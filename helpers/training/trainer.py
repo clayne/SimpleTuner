@@ -405,6 +405,9 @@ class Trainer:
             os.makedirs(self.config.output_dir, exist_ok=True)
         if self.config.preserve_data_backend_cache:
             return
+        if not self.accelerator.is_local_main_process:
+            return
+        logger.debug("init_clear_backend_cache: about to call delete_cache_files()")
         StateTracker.delete_cache_files(
             preserve_data_backend_cache=self.config.preserve_data_backend_cache
         )
