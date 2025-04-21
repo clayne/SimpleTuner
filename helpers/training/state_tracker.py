@@ -251,7 +251,7 @@ class StateTracker:
 
     @classmethod
     def get_image_files(cls, data_backend_id: str):
-        if data_backend_id not in cls.all_image_files:
+        if not cls.all_image_files.get(data_backend_id):
             logger.debug("(rank: %d) get_image_files: data_backend_id NOT in cls.all_image_files, data_backend_id = %s" % (get_rank(), data_backend_id))
             cls.all_image_files[data_backend_id] = cls._load_from_disk(
                 "all_image_files_{}".format(data_backend_id)
