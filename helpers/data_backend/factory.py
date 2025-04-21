@@ -761,7 +761,7 @@ def configure_multi_databackend(args: dict, accelerator, text_encoders, tokenize
         )
 
         preserve_data_backend_cache = backend.get("preserve_data_backend_cache", False)
-        if not preserve_data_backend_cache and accelerator.is_local_main_process:
+        if not preserve_data_backend_cache: # and accelerator.is_local_main_process:
             logger.debug(f"rank {get_rank()} is about to call delete_cache_files() for {init_backend['id']}")
             StateTracker.delete_cache_files(
                 data_backend_id=init_backend["id"],
