@@ -20,11 +20,13 @@ environ["ACCELERATE_LOG_LEVEL"] = "WARNING"
 from helpers.training.trainer import Trainer
 from helpers.training.state_tracker import StateTracker
 from helpers import log_format
+import cProfile as profile
+import os
 
 logger = logging.getLogger("SimpleTuner")
 logger.setLevel(environ.get("SIMPLETUNER_LOG_LEVEL", "INFO"))
 
-if __name__ == "__main__":
+def main():
     trainer = None
     try:
         import multiprocessing
@@ -85,3 +87,10 @@ if __name__ == "__main__":
         print(traceback.format_exc())
     if trainer is not None and trainer.bf is not None:
         trainer.bf.stop_fetching()
+
+if __name__ == "__main__":
+    if environ.get("SIMPLETUNER_PROFILE", "0") == "1":
+        pid = os.getpid()
+        profile.runctx('main()', globals(), locals(), f"simpletuner.cprofile.{pid}.out")
+    else:
+        main()
