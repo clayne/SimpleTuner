@@ -88,6 +88,9 @@ RUN chmod +x SimpleTuner/train.sh
 # Copy start script with exec permissions
 COPY --chmod=755 docker-start.sh /start.sh
 
+# Never update packages
+ENV DISABLE_UPDATES=1
+
 # Ensure SSH access. Not needed for Runpod but is required on Vast and other Docker hosts
 EXPOSE 22/tcp
 
