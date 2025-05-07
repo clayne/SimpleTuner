@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Export useful ENV variables, including all Runpod specific vars, to /etc/rp_environment
+# Export useful ENV variables, including all Runpod specific vars, to /etc/environment
 # This file can then later be sourced in a login shell
 echo "Exporting environment variables..."
 printenv |
-	grep -E '^RUNPOD_|^PATH=|^HF_HOME=|^HF_TOKEN=|^HUGGING_FACE_HUB_TOKEN=|^WANDB_API_KEY=|^WANDB_TOKEN=|^_=' |
-	sed 's/^\(.*\)=\(.*\)$/export \1="\2"/' >>/etc/rp_environment
+	grep -E '^RUNPOD_|^PATH=|^HF_HOME=|^HF_TOKEN=|^HUGGING_FACE_HUB_TOKEN=|^WANDB_API_KEY=|^WANDB_TOKEN=|^RCLONE|^DISABLE_UPDATES|^_=' |
+	sed 's/^\(.*\)=\(.*\)$/export \1="\2"/' >>/etc/environment
 
 # Add it to Bash login script
-echo 'source /etc/rp_environment' >>~/.bashrc
+echo 'source /etc/environment' >>~/.bashrc
 
 # Vast.ai uses $SSH_PUBLIC_KEY
 if [[ $SSH_PUBLIC_KEY ]]; then
