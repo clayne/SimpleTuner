@@ -10,8 +10,9 @@ BRANCH='release'
 IMAGE='simpletuner'
 DOCKERFILE='Dockerfile'
 
-while getopts "u:t:f:i:c:r:b:" opt; do
+while getopts "C:u:t:f:i:c:r:b:" opt; do
 	case $opt in
+	C) COPY+=( "$OPTARG" ) ;;
 	r) REPO="$OPTARG" ;;
 	u) OWNER="$OPTARG" ;;
 	b) BRANCH="$OPTARG" ;;
@@ -33,11 +34,25 @@ if [[ -z "$COMMIT" ]]; then
 	COMMIT="$(git log -1 --format=%h $REMOTE/$BRANCH)"
 fi
 
+COPY_DIR="$(basename "$(mktemp -d -p .)")"
+if [[ "$COPY_DIR" == "." || $COPY_DIR == "./" || $COPY_DIR == "/" ]]; then
+	echo "Unsafe COPY_DIR: $COPY_DIR" 1>&2
+	exit -1
+fi
+trap "rm -rf '$COPY_DIR'" ERR EXIT
+
+for i in "${COPY[@]}"; do
+	src="${i/:*}"; dst="${i/*:}"
+	mkdir -p "$COPY_DIR/$dst"
+	cp -Rp -t "$COPY_DIR/$dst" "$src"
+done
+
 docker build \
 	${REPO:+--build-arg REPO="$REPO"} \
 	${OWNER:+--build-arg OWNER="$OWNER"} \
 	${BRANCH:+--build-arg BRANCH="$BRANCH"} \
 	${COMMIT:+--build-arg COMMIT="$COMMIT"} \
+	${COPY_DIR:+--build-arg COPY_DIR="$COPY_DIR"} \
 	-t "$IMAGE:${TAG:-$BRANCH}" \
 	--file $DOCKERFILE \
 	"$@" \

@@ -85,6 +85,10 @@ RUN --mount=type=cache,target=/root/.cache pip3 install poetry
 RUN --mount=type=cache,target=/root/.cache cd SimpleTuner && python3 -m venv .venv && poetry install --no-root
 RUN chmod +x SimpleTuner/train.sh
 
+# Copy anything from build workspace to container workspace
+ARG COPY_DIR="docker-start.sh"
+COPY ${COPY_DIR} /
+
 # Copy start script with exec permissions
 COPY --chmod=755 docker-start.sh /start.sh
 
