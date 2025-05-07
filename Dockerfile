@@ -6,7 +6,7 @@ WORKDIR /workspace
 
 # Prevents different commands from being stuck by waiting
 # on user input during build
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 # We don't need nsight nor nvidia docker entrypoint files
 RUN rm -rf /opt/nvidia
