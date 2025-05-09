@@ -30,6 +30,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 	rsync \
 	rclone \
 	net-tools \
+	psmisc \
 	less \
 	iputils-ping \
 	7zip \
