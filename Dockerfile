@@ -26,7 +26,6 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 	curl \
 	tmux \
 	tldr \
-	nvtop \
 	vim \
 	rsync \
 	rclone \
@@ -71,6 +70,17 @@ RUN --mount=type=cache,target=/root/.cache pip3 install wandb
 
 # nvitop
 RUN --mount=type=cache,target=/root/.cache pip3 install nvitop
+
+# tmuxp
+RUN --mount=type=cache,target=/root/.cache pip3 install tmuxp
+
+# Vast
+RUN --mount=type=cache,target=/root/.cache pip3 install vastai
+
+# Runpod
+RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
+    --mount=target=/var/cache/apt,type=cache,sharing=locked \
+    wget -qO- cli.runpod.net | bash
 
 ARG REPO="SimpleTuner"
 ARG OWNER="bghira"
