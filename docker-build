@@ -44,7 +44,15 @@ trap "rm -rf '$COPY_DIR'" ERR EXIT
 for i in "${COPY[@]}"; do
 	src="${i/:*}"; dst="${i/*:}"
 	mkdir -p "$COPY_DIR/$dst"
-	cp -Rp -t "$COPY_DIR/$dst" "$src"
+
+	# split source arguments on commas so common files
+	# only need a single directive
+	(
+	IFS=$'\n' src=( $(echo "$src" | xargs -rn1 -d ',') )
+	for j in "${src[@]}"; do
+		cp -Rp -t "$COPY_DIR/$dst" "$j"
+	done
+	)
 done
 
 docker build \
