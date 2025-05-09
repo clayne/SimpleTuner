@@ -36,7 +36,7 @@ console_handler.setFormatter(
 )
 
 # blank out the existing debug.log, if exists
-if os.path.exists("debug.log"):
+if os.path.exists("debug.log") and not os.environ.get("SIMPLETUNER_LOG_APPEND", False):
     with open("debug.log", "w"):
         pass
 
