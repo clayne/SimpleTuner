@@ -98,7 +98,7 @@ RUN --mount=type=cache,target=/root/.cache cd SimpleTuner \
 	&& python3 -m venv .venv \
 	&& poetry install --no-root
 RUN --mount=type=cache,target=/root/.cache cd SimpleTuner \
-	&& bash -c 'source .venv/bin/activate && pip3 install -U torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128'
+	&& bash -c 'source .venv/bin/activate && pip3 install -U torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128 && deactivate'
 RUN chmod +x SimpleTuner/train.sh
 
 # Copy anything from build workspace to container workspace
