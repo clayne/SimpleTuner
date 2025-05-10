@@ -1152,6 +1152,27 @@ def get_argument_parser():
         ),
     )
     parser.add_argument(
+        "--checkpointing_rolling_steps",
+        type=int,
+        default=0,
+        help=(
+            "Functions similarly to --checkpointing_steps, but only a single rolling checkpoint is ever saved and this checkpoint does not count"
+            " towards the value of --checkpoints_total_limit. Useful for when the underlying runtime environment may be prone to spontaneous"
+            " interruption (e.g. spot instances, unreliable hardware, etc) and saving state more frequently is beneficial. This allows one to"
+            " save normal checkpoints at a reasonable cadence but save a rolling checkpoint more frequently so as to avoid losing progress."
+        ),
+    )
+    parser.add_argument(
+        "--checkpointing_use_tempdir",
+        action="store_true",
+        default=False,
+        help=(
+            "Write saved checkpoint directories to a temporary name and atomically rename after successfully writing all state. This ensures that a"
+            " given checkpoint will never be considered for resuming if it wasn't fully written out - as the state cannot be guaranteed. Useful for"
+            " when the underlying runtime environment may be prone to spontaneous interruption (e.g. spot instances, unreliable hardware, etc)."
+        ),
+    )
+    parser.add_argument(
         "--checkpoints_total_limit",
         type=int,
         default=None,
