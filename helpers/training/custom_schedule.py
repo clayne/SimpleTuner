@@ -259,7 +259,7 @@ class Cosine(LRScheduler):
         self.T_mult = T_mult
         self.eta_min = eta_min
         self.T_cur = last_step
-        super().__init__(optimizer, last_step, verbose)
+        super().__init__(optimizer, last_step)
 
     def get_lr(self):
         lrs = [
@@ -370,7 +370,7 @@ class CosineAnnealingHardRestarts(LRScheduler):
         self.eta_min = eta_min
         self.T_cur = last_step
         self.last_step = last_step
-        super().__init__(optimizer, last_step, verbose)
+        super().__init__(optimizer, last_step)
 
     def get_lr(self):
         lrs = [
@@ -452,7 +452,7 @@ class Sine(LRScheduler):
         self.verbose = verbose
         self._last_lr = self.base_lrs
         self.total_steps = 0  # Track total steps for a continuous wave
-        super().__init__(optimizer, last_step, verbose)
+        super().__init__(optimizer, last_step)
 
     def get_lr(self):
         # Calculate learning rates using a continuous sine function based on total steps
