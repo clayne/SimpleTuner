@@ -10,7 +10,7 @@ BRANCH='release'
 IMAGE='simpletuner'
 DOCKERFILE='Dockerfile'
 
-while getopts "C:u:t:f:i:c:r:b:" opt; do
+while getopts "C:u:t:f:i:c:r:b:F:" opt; do
 	case $opt in
 	C) COPY+=( "$OPTARG" ) ;;
 	r) REPO="$OPTARG" ;;
@@ -20,6 +20,7 @@ while getopts "C:u:t:f:i:c:r:b:" opt; do
 	i) IMAGE="$OPTARG" ;;
 	f) DOCKERFILE="$OPTARG" ;;
 	t) TAG="$OPTARG" ;;
+	F) FROM="$OPTARG" ;;
 	?) exit -1 ;;
 	esac
 done; shift $((OPTIND - 1))
@@ -55,6 +56,12 @@ for i in "${COPY[@]}"; do
 	)
 done
 
+if [[ -n "$FROM" ]]; then
+	TMP="$(mktemp)"; trap "rm -f '$TMP'" ERR EXIT
+	sed -e "s#^FROM .*\$#FROM $FROM#g" "$DOCKERFILE" > "$TMP" \
+		&& DOCKERFILE="$(cygpath -aw "$TMP")"
+fi
+
 docker build \
 	${REPO:+--build-arg REPO="$REPO"} \
 	${OWNER:+--build-arg OWNER="$OWNER"} \
@@ -62,6 +69,6 @@ docker build \
 	${COMMIT:+--build-arg COMMIT="$COMMIT"} \
 	${COPY_DIR:+--build-arg COPY_DIR="$COPY_DIR"} \
 	-t "$IMAGE:${TAG:-$BRANCH}" \
-	--file $DOCKERFILE \
+	--file "$DOCKERFILE" \
 	"$@" \
 	.
