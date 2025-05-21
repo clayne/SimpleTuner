@@ -1,0 +1,58 @@
+# SimpleTuner needs CU141
+FROM i860/trainer:base
+
+# /workspace is the default volume for Runpod & other hosts
+WORKDIR /workspace
+
+# Never update packages
+ENV DISABLE_UPDATES=1
+
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=1 \
+    POETRY_VIRTUALENVS_CREATE=1
+
+ARG REPO="SimpleTuner"
+ARG OWNER="bghira"
+ARG BRANCH="release"
+ARG COMMIT="HEAD"
+
+# Install SimpleTuner deps first
+RUN --mount=type=cache,id=python,target=/root/.cache <<EOF
+git clone https://github.com/$OWNER/$REPO --branch $BRANCH --no-checkout --depth=1 $REPO
+
+cd $REPO
+for i in \
+	pyproject.toml \
+	poetry.lock
+do
+	git show $COMMIT:$i > $i
+done
+rm -rf .git
+
+python3 -m venv .venv \
+	&& pip3 install poetry \
+	&& poetry install --no-root
+bash -c 'source .venv/bin/activate && pip3 install -U torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128 && deactivate'
+EOF
+
+# Checkout SimpleTuner from git but preserve poetry created venv
+RUN <<EOF
+mv $REPO $REPO.old
+git clone https://github.com/$OWNER/$REPO --branch $BRANCH $REPO
+chmod +x $REPO/train.sh
+mv $REPO.old/.venv $REPO
+rm -rf $REPO.old
+EOF
+
+# Copy anything from build workspace to container workspace
+ARG COPY_DIR="docker-start.sh"
+COPY $COPY_DIR /
+
+# Copy start script with exec permissions
+COPY --chmod=755 docker-start.sh /start.sh
+
+# Ensure SSH access. Not needed for Runpod but is required on Vast and other Docker hosts
+EXPOSE 22/tcp
+
+# Dummy entrypoint
+ENTRYPOINT [ "/start.sh" ]
