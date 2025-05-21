@@ -12,8 +12,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN rm -rf /opt/nvidia
 
 # Install misc unix libraries
-RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
-    --mount=target=/var/cache/apt,type=cache,sharing=locked \
+RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked,mode=0755 \
+    --mount=target=/var/cache/apt,type=cache,sharing=locked,mode=0755 \
     rm -f /etc/apt/apt.conf.d/docker-clean \
     && apt-get update -y \
     && apt-get upgrade -y \
@@ -48,8 +48,8 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 	python3.10-venv
 
 # Fix nvtop (may segfault with older versions)
-RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
-    --mount=target=/var/cache/apt,type=cache,sharing=locked \
+RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked,mode=0755 \
+    --mount=target=/var/cache/apt,type=cache,sharing=locked,mode=0755 \
     apt-get update -y \
     && apt-get install -y --no-install-recommends software-properties-common \
     && apt-add-repository ppa:flexiondotorg/nvtop \
@@ -60,27 +60,27 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 RUN git lfs install && git config --global credential.helper store
 
 # Python
-RUN --mount=type=cache,target=/root/.cache python3 -m pip install pip --upgrade
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache python3 -m pip install pip --upgrade
 
 # HF
 ENV HF_HOME=/workspace/huggingface
-RUN --mount=type=cache,target=/root/.cache pip3 install "huggingface_hub[cli]"
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache pip3 install "huggingface_hub[cli]"
 
 # WanDB
-RUN --mount=type=cache,target=/root/.cache pip3 install wandb
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache pip3 install wandb
 
 # nvitop
-RUN --mount=type=cache,target=/root/.cache pip3 install nvitop
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache pip3 install nvitop
 
 # tmuxp
-RUN --mount=type=cache,target=/root/.cache pip3 install tmuxp
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache pip3 install tmuxp
 
 # Vast
-RUN --mount=type=cache,target=/root/.cache pip3 install vastai
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache pip3 install vastai
 
 # Runpod
-RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
-    --mount=target=/var/cache/apt,type=cache,sharing=locked \
+RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked,mode=0755 \
+    --mount=target=/var/cache/apt,type=cache,sharing=locked,mode=0755 \
     wget -qO- cli.runpod.net | bash
 
 ARG OWNER="bghira"
@@ -91,8 +91,8 @@ ARG COMMIT="HEAD"
 RUN git clone https://github.com/$OWNER/SimpleTuner --branch $BRANCH && git -C SimpleTuner reset --hard $COMMIT
 
 # Install SimpleTuner
-RUN --mount=type=cache,target=/root/.cache pip3 install poetry
-RUN --mount=type=cache,target=/root/.cache cd SimpleTuner && python3 -m venv .venv && poetry install --no-root
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache pip3 install poetry
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache cd SimpleTuner && python3 -m venv .venv && poetry install --no-root
 RUN chmod +x SimpleTuner/train.sh
 
 # Copy anything from build workspace to container workspace

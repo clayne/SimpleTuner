@@ -31,7 +31,7 @@ rm -rf .git
 EOF
 
 # Install SimpleTuner deps first
-RUN --mount=type=cache,id=python,target=/root/.cache <<EOF
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache <<EOF
 cd SimpleTuner \
 	&& python3 -m venv .venv \
 	&& pip3 install poetry \
