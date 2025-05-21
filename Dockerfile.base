@@ -11,36 +11,40 @@ ENV POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=1 \
     POETRY_VIRTUALENVS_CREATE=1
 
-ARG REPO="SimpleTuner"
 ARG OWNER="bghira"
 ARG BRANCH="release"
 ARG COMMIT="HEAD"
 
-# Install SimpleTuner deps first
-RUN --mount=type=cache,id=python,target=/root/.cache <<EOF
-git clone https://github.com/$OWNER/$REPO --branch $BRANCH --no-checkout --depth=1 $REPO
+# Checkout *only* python-specific dep files from repo
+RUN <<EOF
+git clone https://github.com/$OWNER/SimpleTuner --branch $BRANCH --no-checkout --depth=1 SimpleTuner
 
-cd $REPO
+cd SimpleTuner
 for i in \
 	pyproject.toml \
 	poetry.lock
 do
 	git show $COMMIT:$i > $i
 done
-rm -rf .git
 
-python3 -m venv .venv \
+rm -rf .git
+EOF
+
+# Install SimpleTuner deps first
+RUN --mount=type=cache,id=python,target=/root/.cache <<EOF
+cd SimpleTuner \
+	&& python3 -m venv .venv \
 	&& pip3 install poetry \
 	&& poetry install --no-root
 EOF
 
 # Checkout SimpleTuner from git but preserve poetry created venv
 RUN <<EOF
-mv $REPO $REPO.old
-git clone https://github.com/$OWNER/$REPO --branch $BRANCH $REPO
-chmod +x $REPO/train.sh
-mv $REPO.old/.venv $REPO
-rm -rf $REPO.old
+mv SimpleTuner SimpleTuner.old
+git clone https://github.com/$OWNER/SimpleTuner --branch $BRANCH SimpleTuner
+chmod +x SimpleTuner/train.sh
+mv SimpleTuner.old/.venv SimpleTuner
+rm -rf SimpleTuner.old
 EOF
 
 # Copy anything from build workspace to container workspace
