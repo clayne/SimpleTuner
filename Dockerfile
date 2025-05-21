@@ -83,17 +83,18 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked,mode=0755 \
     --mount=target=/var/cache/apt,type=cache,sharing=locked,mode=0755 \
     wget -qO- cli.runpod.net | bash
 
+ARG REPO="SimpleTuner"
 ARG OWNER="bghira"
 ARG BRANCH="release"
 ARG COMMIT="HEAD"
 
 # Clone SimpleTuner
-RUN git clone https://github.com/$OWNER/SimpleTuner --branch $BRANCH && git -C SimpleTuner reset --hard $COMMIT
+RUN git clone https://github.com/$OWNER/$REPO --branch $BRANCH && git -C $REPO reset --hard $COMMIT
 
 # Install SimpleTuner
 RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache pip3 install poetry
-RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache cd SimpleTuner && python3 -m venv .venv && poetry install --no-root
-RUN chmod +x SimpleTuner/train.sh
+RUN --mount=type=cache,sharing=shared,mode=0755,id=python,target=/root/.cache cd $REPO && python3 -m venv .venv && poetry install --no-root
+RUN chmod +x $REPO/train.sh
 
 # Copy anything from build workspace to container workspace
 ARG COPY_DIR="docker-start.sh"
