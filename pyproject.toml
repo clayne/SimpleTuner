@@ -9,12 +9,12 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-torch = "^2.6.0"
-torchvision = "^0.21.0"
+torch = "^2.7.0+cu128"
+torchvision = "^0.22.0+cu128"
 diffusers = {git = "https://github.com/huggingface/diffusers"}
-transformers = "^4.51.1"
+transformers = "^4.51.2"
 datasets = "^3.0.1"
-bitsandbytes = "^0.45.0"
+bitsandbytes = "^0.45.5"
 wandb = "^0.19.4"
 requests = "^2.32.3"
 pillow = "^11.0.0"
@@ -31,7 +31,7 @@ boto3 = "^1.35.83"
 pandas = "^2.2.3"
 botocore = "^1.35.83"
 urllib3 = "<1.27"
-torchaudio = "^2.4.1"
+torchaudio = "^2.7.0+cu128"
 triton-library = "^1.0.0rc4"
 torchsde = "^0.2.6"
 torchmetrics = "^1.1.1"
@@ -39,7 +39,7 @@ colorama = "^0.4.6"
 numpy = "^2.2.0"
 peft = "^0.14.0"
 tensorboard = "^2.18.0"
-triton = {version = "^3.1.0", source = "pytorch"}
+triton = {version = "^3.3.0", source = "pytorch"}
 sentencepiece = "^0.2.0"
 optimum-quanto = {git = "https://github.com/huggingface/optimum-quanto"}
 lycoris-lora = {git = "https://github.com/kohakublueleaf/lycoris", rev = "dev"}
@@ -68,4 +68,4 @@ build-backend = "poetry.core.masonry.api"
 [[tool.poetry.source]]
 priority = "supplemental"
 name = "pytorch"
-url = "https://download.pytorch.org/whl/cu124"
+url = "https://download.pytorch.org/whl/cu128"
